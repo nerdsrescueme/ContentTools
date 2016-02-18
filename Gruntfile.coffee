@@ -44,6 +44,13 @@ module.exports = (grunt) ->
                         'src/sandbox/sandbox.coffee'
                         ]
 
+            integration:
+                files:
+                    'integration/integration.js': [
+                        'src/integration/image-uploader.coffee'
+                        'src/integration/integration.coffee'
+                    ]
+
             spec:
                 files:
                     'spec/spec-helper.js': 'src/spec/spec-helper.coffee'
@@ -87,6 +94,10 @@ module.exports = (grunt) ->
             sandbox:
                 files:
                     'sandbox/sandbox.css': 'src/sandbox/sandbox.scss'
+
+            integration:
+                files:
+                    'integration/integration.css': 'src/integration/integration.scss'
 
         uglify:
             options:
