@@ -141,9 +141,34 @@ module.exports = (grunt) ->
                     ]
                 tasks: ['sandbox']
 
+            integration:
+                files: [
+                    'src/integration/*.coffee',
+                    'src/integration/*.scss'
+                ]
+
             spec:
                 files: ['src/spec/**/*.coffee']
                 tasks: ['spec']
+
+        copy_modified:
+            export_build:
+                files:
+                    cwd: 'build'
+                    src: [
+                        'content-tools.js'
+                        'content-tools.min.css'
+                        'icons.woff'
+                        'images/*'
+                    ]
+                    dest: '../Resources/public/contenttools'
+            export_integration:
+                files:
+                    cwd: 'integration'
+                    src: [
+                        'integration.js'
+                    ]
+                    dest: '../Resources/public/contenttools'
     })
 
     # Plug-ins
@@ -154,6 +179,7 @@ module.exports = (grunt) ->
     grunt.loadNpmTasks 'grunt-contrib-sass'
     grunt.loadNpmTasks 'grunt-contrib-uglify'
     grunt.loadNpmTasks 'grunt-contrib-watch'
+    grunt.loadNpmTasks 'grunt-copy-modified'
 
     # Tasks
     grunt.registerTask 'build', [
@@ -169,10 +195,23 @@ module.exports = (grunt) ->
         'sass:sandbox'
     ]
 
+    grunt.registerTask 'integration', [
+        'coffee:integration'
+        'sass:integration'
+    ]
+
+    grunt.registerTask 'export', [
+        'build'
+        'integration'
+        'copy_modified:export_build'
+        'copy_modified:export_integration'
+    ]
+
     grunt.registerTask 'spec', [
         'coffee:spec'
     ]
 
     grunt.registerTask 'watch-build', ['watch:build']
     grunt.registerTask 'watch-sandbox', ['watch:sandbox']
+    grunt.registerTask 'watch-integration', ['watch:integration']
     grunt.registerTask 'watch-spec', ['watch:spec']
