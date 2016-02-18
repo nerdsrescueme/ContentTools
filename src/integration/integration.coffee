@@ -37,20 +37,3 @@ window.onload = () ->
             new ContentTools.FlashUI('ok')
 
         setTimeout(saved, 2000)
-
-    # Translation example
-    req = new XMLHttpRequest()
-    req.overrideMimeType('application/json')
-    req.open(
-        'GET',
-        'https://raw.githubusercontent.com/GetmeUK/ContentTools/master/translations/lp.json',
-        true
-        )
-    req.onreadystatechange = (ev) ->
-        if ev.target.readyState == 4
-            translations = JSON.parse(ev.target.responseText)
-            ContentEdit.addTranslations('lp', translations)
-            ContentEdit.LANGUAGE = 'lp'
-
-    # Uncomment the following line to use the editor with pig latin translation
-    #req.send(null)
