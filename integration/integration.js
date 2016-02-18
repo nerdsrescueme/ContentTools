@@ -137,12 +137,12 @@
   window.ImageUploader = ImageUploader;
 
   window.onload = function() {
-    var editor, req;
+    var editor;
     ContentTools.IMAGE_UPLOADER = ImageUploader.createImageUploader;
     ContentTools.StylePalette.add([new ContentTools.Style('By-line', 'article__by-line', ['p']), new ContentTools.Style('Caption', 'article__caption', ['p']), new ContentTools.Style('Example', 'example', ['pre']), new ContentTools.Style('Example + Good', 'example--good', ['pre']), new ContentTools.Style('Example + Bad', 'example--bad', ['pre'])]);
     editor = ContentTools.EditorApp.get();
-    editor.init('.editable', 'data-name');
-    editor.bind('save', function(regions, autoSave) {
+    editor.init('*[property^="schema:"]', 'property');
+    return editor.bind('save', function(regions, autoSave) {
       var saved;
       console.log(regions);
       editor.busy(true);
@@ -154,17 +154,6 @@
       })(this);
       return setTimeout(saved, 2000);
     });
-    req = new XMLHttpRequest();
-    req.overrideMimeType('application/json');
-    req.open('GET', 'https://raw.githubusercontent.com/GetmeUK/ContentTools/master/translations/lp.json', true);
-    return req.onreadystatechange = function(ev) {
-      var translations;
-      if (ev.target.readyState === 4) {
-        translations = JSON.parse(ev.target.responseText);
-        ContentEdit.addTranslations('lp', translations);
-        return ContentEdit.LANGUAGE = 'lp';
-      }
-    };
   };
 
 }).call(this);
