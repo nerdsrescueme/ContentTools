@@ -145,7 +145,8 @@ module.exports = (grunt) ->
                 files: [
                     'src/integration/*.coffee',
                     'src/integration/*.scss'
-                ]
+                    ]
+                tasks: ['export']
 
             spec:
                 files: ['src/spec/**/*.coffee']
