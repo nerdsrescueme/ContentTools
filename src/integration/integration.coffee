@@ -1,5 +1,9 @@
 window.onload = () ->
 
+    if !window.CONTENT_ENDPOINT || !window.WORKFLOW_ENDPOINT
+        console.log 'Unable to initialize editor, no endpoints found.'
+        return
+
     ContentTools.IMAGE_UPLOADER = ImageUploader.createImageUploader
 
     # Build a palette of styles
@@ -12,22 +16,67 @@ window.onload = () ->
         ])
 
     editor = ContentTools.EditorApp.get()
-    editor.init('*[property^="schema:"]', 'property')
+    owner = document.querySelector('div[about^="phpcr|"]')
+
+    if !owner
+        console.log 'Unable to initialize editor, no owner document found.'
+        return
+
+    # Assign attributes from owner
+    schema = owner.getAttribute('xmlns:schema')
+    subject = owner.getAttribute('about')
+    type = owner.getAttribute('typeof').replace('schema:', schema)
+
+    if !schema || !subject || !type
+        console.log 'Unable to initialize editor, owner data is not complete.'
+        return
+
+    putEndpoint = "#{window.CONTENT_ENDPOINT}/#{subject}"
+
+    # Let's grab the editable regions
+    properties = document.querySelectorAll('*[property^="schema:"]')
+
+    editor.init(properties, 'property')
 
     editor.bind 'save', (regions, autoSave) ->
-        # Handle the page being saved
-        console.log regions
+        # If no regions present, do nothing
+        if (0 == Object.keys(regions).length)
+            new ContentTools.FlashUI('ok')
+            return
 
         # Mark the ignition as busy while we save the page
         editor.busy(true)
 
-        # Simulate saving the page
-        saved = () =>
+        # Create output by iterating regions
+        outputData = {}
+        outputData['@subject'] = "<#{subject}>"
+        outputData['@type'] = "<#{type}>"
 
-            # Save has completed set the app as no longer busy
-            editor.busy(false)
+        for region, content of regions
+            def = region.replace('schema:', schema)
+            outputData["<#{def}>"] = content
 
-            # Trigger a flash to indicate the save has been successful
-            new ContentTools.FlashUI('ok')
+        # Create xhr request function
+        save = (to) ->
+            xhr = new XMLHttpRequest()
 
-        setTimeout(saved, 2000)
+            xhr.addEventListener 'readystatechange', () ->
+                if xhr.readyState is 4 # ReadyState Complete
+                    successResultCodes = [200]
+                    if xhr.status in successResultCodes
+                        data = JSON.parse xhr.responseText
+                        console.log 'data message: ', data.message
+                        editor.busy(false)
+                        new ContentTools.FlashUI('ok')
+                    else
+                        console.log 'Error loading data...'
+                        editor.busy(false)
+                        new ContentTools.FlashUI('no')
+
+            xhr.open 'PUT', to, false
+            xhr.setRequestHeader 'Content-Type', 'application/json;charset=UTF-8'
+            xhr.setRequestHeader 'Accept', 'application/json'
+            xhr.send(JSON.stringify(outputData))
+
+        # Do it!
+        save putEndpoint

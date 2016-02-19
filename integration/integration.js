@@ -1,5 +1,6 @@
 (function() {
-  var ImageUploader;
+  var ImageUploader,
+    __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
   ImageUploader = (function() {
     ImageUploader.imagePath = 'image.png';
@@ -137,22 +138,69 @@
   window.ImageUploader = ImageUploader;
 
   window.onload = function() {
-    var editor;
+    var editor, owner, properties, putEndpoint, schema, subject, type;
+    if (!window.CONTENT_ENDPOINT || !window.WORKFLOW_ENDPOINT) {
+      console.log('Unable to initialize editor, no endpoints found.');
+      return;
+    }
     ContentTools.IMAGE_UPLOADER = ImageUploader.createImageUploader;
     ContentTools.StylePalette.add([new ContentTools.Style('By-line', 'article__by-line', ['p']), new ContentTools.Style('Caption', 'article__caption', ['p']), new ContentTools.Style('Example', 'example', ['pre']), new ContentTools.Style('Example + Good', 'example--good', ['pre']), new ContentTools.Style('Example + Bad', 'example--bad', ['pre'])]);
     editor = ContentTools.EditorApp.get();
-    editor.init('*[property^="schema:"]', 'property');
+    owner = document.querySelector('div[about^="phpcr|"]');
+    if (!owner) {
+      console.log('Unable to initialize editor, no owner document found.');
+      return;
+    }
+    schema = owner.getAttribute('xmlns:schema');
+    subject = owner.getAttribute('about');
+    type = owner.getAttribute('typeof').replace('schema:', schema);
+    if (!schema || !subject || !type) {
+      console.log('Unable to initialize editor, owner data is not complete.');
+      return;
+    }
+    putEndpoint = "" + window.CONTENT_ENDPOINT + "/" + subject;
+    properties = document.querySelectorAll('*[property^="schema:"]');
+    editor.init(properties, 'property');
     return editor.bind('save', function(regions, autoSave) {
-      var saved;
-      console.log(regions);
+      var content, def, outputData, region, save;
+      if (0 === Object.keys(regions).length) {
+        new ContentTools.FlashUI('ok');
+        return;
+      }
       editor.busy(true);
-      saved = (function(_this) {
-        return function() {
-          editor.busy(false);
-          return new ContentTools.FlashUI('ok');
-        };
-      })(this);
-      return setTimeout(saved, 2000);
+      outputData = {};
+      outputData['@subject'] = "<" + subject + ">";
+      outputData['@type'] = "<" + type + ">";
+      for (region in regions) {
+        content = regions[region];
+        def = region.replace('schema:', schema);
+        outputData["<" + def + ">"] = content;
+      }
+      save = function(to) {
+        var xhr;
+        xhr = new XMLHttpRequest();
+        xhr.addEventListener('readystatechange', function() {
+          var data, successResultCodes, _ref;
+          if (xhr.readyState === 4) {
+            successResultCodes = [200];
+            if (_ref = xhr.status, __indexOf.call(successResultCodes, _ref) >= 0) {
+              data = JSON.parse(xhr.responseText);
+              console.log('data message: ', data.message);
+              editor.busy(false);
+              return new ContentTools.FlashUI('ok');
+            } else {
+              console.log('Error loading data...');
+              editor.busy(false);
+              return new ContentTools.FlashUI('no');
+            }
+          }
+        });
+        xhr.open('PUT', to, false);
+        xhr.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
+        xhr.setRequestHeader('Accept', 'application/json');
+        return xhr.send(JSON.stringify(outputData));
+      };
+      return save(putEndpoint);
     });
   };
 
