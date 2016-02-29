@@ -76,6 +76,7 @@ window.onload = () ->
             xhr.open 'PUT', to, false
             xhr.setRequestHeader 'Content-Type', 'application/json;charset=UTF-8'
             xhr.setRequestHeader 'Accept', 'application/json'
+            xhr.setRequestHeader 'X-Requested-With', 'XMLHttpRequest'
             xhr.send(JSON.stringify(outputData))
 
         # Do it!
