@@ -198,6 +198,7 @@
         xhr.open('PUT', to, false);
         xhr.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
         xhr.setRequestHeader('Accept', 'application/json');
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
         return xhr.send(JSON.stringify(outputData));
       };
       return save(putEndpoint);

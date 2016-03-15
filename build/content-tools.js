@@ -1005,7 +1005,7 @@
       }
       this.tagName = '';
       this.selfClosed = false;
-      return this.attributes = [];
+      return this.attributes = {};
     };
 
     _Parser.prototype._popTag = function() {
@@ -1310,7 +1310,6 @@
   })();
 
 }).call(this);
-
 (function() {
   var SELF_CLOSING_NODE_NAMES, _containedBy, _getChildNodeAndOffset, _getNodeRange, _getOffsetOfChildNode,
     __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
@@ -1617,6 +1616,7 @@
     HELPER_CHAR_LIMIT: 250,
     INDENT: '    ',
     LANGUAGE: 'en',
+    PREFER_LINE_BREAKS: false,
     RESIZE_CORNER_SIZE: 15,
     _translations: {},
     _: function(s) {
@@ -3258,7 +3258,7 @@
         indent = '';
       }
       if (!this._lastCached || this._lastCached < this._modified) {
-        content = this.content.copy();
+        content = this.content.copy().trim();
         content.optimize();
         this._lastCached = Date.now();
         this._cached = content.html();
@@ -3443,7 +3443,7 @@
       selection = ContentSelect.Range.query(this._domElement);
       tip = this.content.substring(0, selection.get()[0]);
       tail = this.content.substring(selection.get()[1]);
-      if (ev.shiftKey) {
+      if (ev.shiftKey ^ ContentEdit.PREFER_LINE_BREAKS) {
         insertAt = selection.get()[0];
         lineBreakStr = '<br>';
         if (this.content.length() === insertAt) {
@@ -3518,11 +3518,11 @@
     };
 
     Text.prototype._syncContent = function(ev) {
-      var newSnaphot, snapshot;
+      var newSnapshot, snapshot;
       snapshot = this.content.html();
       this.content = new HTMLString.String(this._domElement.innerHTML, this.content.preserveWhitespace());
-      newSnaphot = this.content.html();
-      if (snapshot !== newSnaphot) {
+      newSnapshot = this.content.html();
+      if (snapshot !== newSnapshot) {
         this.taint();
       }
       return this._flagIfEmpty();
@@ -4236,7 +4236,7 @@
         indent = '';
       }
       if (!this._lastCached || this._lastCached < this._modified) {
-        content = this.content.copy();
+        content = this.content.copy().trim();
         content.optimize();
         this._lastCached = Date.now();
         this._cached = content.html();
@@ -4617,6 +4617,19 @@
       return 'table-row';
     };
 
+    TableRow.prototype.isEmpty = function() {
+      var cell, text, _i, _len, _ref;
+      _ref = this.children;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        cell = _ref[_i];
+        text = cell.tableCellText();
+        if (text && text.content.length() > 0) {
+          return false;
+        }
+      }
+      return true;
+    };
+
     TableRow.prototype.type = function() {
       return 'TableRow';
     };
@@ -4785,7 +4798,7 @@
         indent = '';
       }
       if (!this._lastCached || this._lastCached < this._modified) {
-        content = this.content.copy();
+        content = this.content.copy().trim();
         content.optimize();
         this._lastCached = Date.now();
         this._cached = content.html();
@@ -4814,12 +4827,42 @@
       return this._dragTimeout = setTimeout(initDrag, ContentEdit.DRAG_HOLD_DURATION);
     };
 
-    TableCellText.prototype._keyReturn = function(ev) {
+    TableCellText.prototype._keyBack = function(ev) {
+      var cell, previous, row, selection;
+      selection = ContentSelect.Range.query(this._domElement);
+      if (!(selection.get()[0] === 0 && selection.isCollapsed())) {
+        return;
+      }
       ev.preventDefault();
-      return this._keyTab({
-        'shiftKey': false,
-        'preventDefault': function() {}
-      });
+      cell = this.parent();
+      row = cell.parent();
+      if (this.content.length() === 0 && row.children.indexOf(cell) === 0) {
+        if (row.isEmpty()) {
+          previous = this.previousContent();
+          if (previous) {
+            previous.focus();
+            selection = new ContentSelect.Range(previous.content.length(), previous.content.length());
+            selection.select(previous.domElement());
+          }
+          return row.parent().detach(row);
+        }
+      }
+    };
+
+    TableCellText.prototype._keyDelete = function(ev) {
+      var lastChild, nextElement, row, selection;
+      row = this.parent().parent();
+      if (row.isEmpty()) {
+        ev.preventDefault();
+        lastChild = row.children[row.children.length - 1];
+        nextElement = lastChild.tableCellText().nextContent();
+        if (nextElement) {
+          nextElement.focus();
+          selection = new ContentSelect.Range(0, 0);
+          selection.select(nextElement.domElement());
+        }
+        return row.parent().detach(row);
+      }
     };
 
     TableCellText.prototype._keyDown = function(ev) {
@@ -4845,6 +4888,14 @@
         cellIndex = Math.min(cellIndex, nextRow.children.length);
         return nextRow.children[cellIndex].tableCellText().focus();
       }
+    };
+
+    TableCellText.prototype._keyReturn = function(ev) {
+      ev.preventDefault();
+      return this._keyTab({
+        'shiftKey': false,
+        'preventDefault': function() {}
+      });
     };
 
     TableCellText.prototype._keyTab = function(ev) {
@@ -4912,7 +4963,6 @@
   })(ContentEdit.Text);
 
 }).call(this);
-
 (function() {
   var AttributeUI, CropMarksUI, StyleUI, _EditorApp,
     __slice = [].slice,
@@ -5714,7 +5764,11 @@
           if (element === _this._lastUpdateElement) {
             if (element && element.selection) {
               selection = element.selection();
-              if (_this._lastUpdateSelection && !selection.eq(_this._lastUpdateSelection)) {
+              if (_this._lastUpdateSelection) {
+                if (!selection.eq(_this._lastUpdateSelection)) {
+                  update = true;
+                }
+              } else {
                 update = true;
               }
             }
@@ -7396,7 +7450,7 @@
         return function(save) {
           var focused;
           focused = ContentEdit.Root.get().focused();
-          if (focused && focused._syncContent !== void 0) {
+          if (focused && focused.isMounted() && focused._syncContent !== void 0) {
             focused._syncContent();
           }
           if (save) {
@@ -7757,12 +7811,21 @@
     };
 
     _EditorApp.prototype._preventEmptyRegions = function() {
-      var name, placeholder, region, _ref, _results;
+      var child, hasEditableChildren, name, placeholder, region, _i, _len, _ref, _ref1, _results;
       _ref = this._regions;
       _results = [];
       for (name in _ref) {
         region = _ref[name];
-        if (region.children.length > 0) {
+        hasEditableChildren = false;
+        _ref1 = region.children;
+        for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+          child = _ref1[_i];
+          if (child.type() !== 'Static') {
+            hasEditableChildren = true;
+            break;
+          }
+        }
+        if (hasEditableChildren) {
           continue;
         }
         placeholder = new ContentEdit.Text('p', {}, '');
@@ -8182,10 +8245,23 @@
     };
 
     Link.canApply = function(element, selection) {
+      var character;
       if (element.type() === 'Image') {
         return true;
       } else {
-        return Link.__super__.constructor.canApply.call(this, element, selection);
+        if (!element.content) {
+          return false;
+        }
+        if (!selection) {
+          return false;
+        }
+        if (selection.isCollapsed()) {
+          character = element.content.characters[selection.get()[0]];
+          if (!character || !character.hasTags('a')) {
+            return false;
+          }
+        }
+        return true;
       }
     };
 
@@ -8198,11 +8274,24 @@
     };
 
     Link.apply = function(element, selection, callback) {
-      var allowScrolling, app, applied, dialog, domElement, from, measureSpan, modal, rect, selectTag, to, transparent, _ref;
+      var allowScrolling, app, applied, characters, dialog, domElement, ends, from, measureSpan, modal, rect, selectTag, starts, to, transparent, _ref;
       applied = false;
       if (element.type() === 'Image') {
         rect = element.domElement().getBoundingClientRect();
       } else {
+        if (selection.isCollapsed()) {
+          characters = element.content.characters;
+          starts = selection.get(0)[0];
+          ends = starts;
+          while (starts > 0 && characters[starts - 1].hasTags('a')) {
+            starts -= 1;
+          }
+          while (ends < characters.length && characters[ends].hasTags('a')) {
+            ends += 1;
+          }
+          selection = new ContentSelect.Range(starts, ends);
+          selection.select(element.domElement());
+        }
         element.storeState();
         selectTag = new HTMLString.Tag('span', {
           'class': 'ct--puesdo-select'
@@ -8302,7 +8391,17 @@
     Heading.tagName = 'h1';
 
     Heading.canApply = function(element, selection) {
-      return element.content !== void 0 && element.parent().type() === 'Region';
+      return element.content !== void 0 && ['Text', 'PreText'].indexOf(element.type()) !== -1;
+    };
+
+    Heading.isApplied = function(element, selection) {
+      if (!element.content) {
+        return false;
+      }
+      if (['Text', 'PreText'].indexOf(element.type()) === -1) {
+        return false;
+      }
+      return element.tagName() === this.tagName;
     };
 
     Heading.apply = function(element, selection, callback) {
@@ -8319,7 +8418,11 @@
         textElement.focus();
         textElement.selection(selection);
       } else {
-        element.tagName(this.tagName);
+        if (element.tagName() === this.tagName) {
+          element.tagName('p');
+        } else {
+          element.tagName(this.tagName);
+        }
         element.restoreState();
       }
       return callback(true);
@@ -8408,6 +8511,10 @@
 
     Preformatted.apply = function(element, selection, callback) {
       var insertAt, parent, preText, text;
+      if (element.type() === 'PreText') {
+        ContentTools.Tools.Paragraph.apply(element, selection, callback);
+        return;
+      }
       text = element.content.text();
       preText = new ContentEdit.PreText('pre', {}, HTMLString.String.encode(text));
       parent = element.parent();
@@ -9067,6 +9174,10 @@
         element.nextContent().focus();
       } else if (element.previousContent()) {
         element.previousContent().focus();
+      }
+      if (!element.isMounted()) {
+        callback(true);
+        return;
       }
       switch (element.type()) {
         case 'ListItemText':

@@ -114,7 +114,9 @@ class _EditorApp extends ContentTools.ComponentUI
             # For now though we manually perform a content sync if an
             # element supporting that method has focus.
             focused = ContentEdit.Root.get().focused()
-            if focused and focused._syncContent != undefined
+            if focused and focused.isMounted() and
+                    focused._syncContent != undefined
+
                 focused._syncContent()
 
             if save
@@ -568,7 +570,16 @@ class _EditorApp extends ContentTools.ComponentUI
 
         # Check for any region that is now empty
         for name, region of @_regions
-            if region.children.length > 0
+
+            # We have to check for elements that can receive focus as static
+            # elements alone don't allow new content to be added to a region.
+            hasEditableChildren = false
+            for child in region.children
+                if child.type() != 'Static'
+                    hasEditableChildren = true
+                    break
+
+            if hasEditableChildren
                 continue
 
             # Insert a placeholder text element to prevent the region from

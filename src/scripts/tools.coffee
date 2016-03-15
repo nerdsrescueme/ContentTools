@@ -183,7 +183,22 @@ class ContentTools.Tools.Link extends ContentTools.Tools.Bold
         if element.type() is 'Image'
             return true
         else
-            return super(element, selection)
+            # Must support content
+            unless element.content
+                return false
+
+            # A selection must exist
+            if not selection
+                return false
+
+            # If the selection is collapsed then it must be within an existing
+            # link.
+            if selection.isCollapsed()
+                character = element.content.characters[selection.get()[0]]
+                if not character or not character.hasTags('a')
+                    return false
+
+            return true
 
     @isApplied: (element, selection) ->
         # Return true if the tool is currently applied to the current
@@ -202,6 +217,25 @@ class ContentTools.Tools.Link extends ContentTools.Tools.Bold
             rect = element.domElement().getBoundingClientRect()
 
         else
+            # If the selection is collapsed then we need to select the entire
+            # entire link.
+            if selection.isCollapsed()
+
+                # Find the bounds of the link
+                characters = element.content.characters
+                starts = selection.get(0)[0]
+                ends = starts
+
+                while starts > 0 and characters[starts - 1].hasTags('a')
+                    starts -= 1
+
+                while ends < characters.length and characters[ends].hasTags('a')
+                    ends += 1
+
+                # Select the link in full
+                selection = new ContentSelect.Range(starts, ends)
+                selection.select(element.domElement())
+
             # Text elements
             element.storeState()
 
@@ -334,7 +368,18 @@ class ContentTools.Tools.Heading extends ContentTools.Tool
         # element/selection.
 
         return element.content != undefined and
-                element.parent().type() is 'Region'
+                ['Text', 'PreText'].indexOf(element.type()) != -1
+
+    @isApplied: (element, selection) ->
+        # Return true if the tool is currently applied to the current
+        # element/selection.
+        if not element.content
+            return false
+
+        if ['Text', 'PreText'].indexOf(element.type()) == -1
+            return false
+
+        return element.tagName() == @tagName
 
     @apply: (element, selection, callback) ->
         # Apply the tool to the current element
@@ -360,7 +405,14 @@ class ContentTools.Tools.Heading extends ContentTools.Tool
 
         else
             # Change the text elements tag name
-            element.tagName(@tagName)
+
+            # If the element already has the same tag name as the tool will
+            # apply revert the element to a paragraph.
+            if element.tagName() == @tagName
+                element.tagName('p')
+            else
+                element.tagName(@tagName)
+
             element.restoreState()
 
         callback(true)
@@ -431,6 +483,12 @@ class ContentTools.Tools.Preformatted extends ContentTools.Tools.Heading
 
     @apply: (element, selection, callback) ->
         # Apply the tool to the current element
+
+        # If the element is already a PreText element then convert it to a
+        # paragraph instead.
+        if element.type() is 'PreText'
+            ContentTools.Tools.Paragraph.apply(element, selection, callback)
+            return
 
         # Escape the contents of the existing element
         text = element.content.text()
@@ -1085,6 +1143,13 @@ class ContentTools.Tools.Remove extends ContentTools.Tool
             element.nextContent().focus()
         else if element.previousContent()
             element.previousContent().focus()
+
+        # Check the element is still mounted (some elements may automatically
+        # remove themselves when they lose focus, for example empty text
+        # elements.
+        if not element.isMounted()
+            callback(true)
+            return
 
         # Remove the element
         switch element.type()
