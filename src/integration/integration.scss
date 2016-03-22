@@ -1,260 +1,114 @@
 @charset "UTF-8";
 
-/* Vendor */
-@import "../../external/styles/bourbon/bourbon";
-@import "../../external/styles/neat/neat";
+@import '../styles/content-tools';
 
-/* Reset */
-@import "../../external/styles/normalize";
+$buttonSize: 48px; // Needs to be same as ignition button size
 
-/* Settings */
-
-$sans-serif: helvetica, sans-serif;
-$serif: georgia, serif;
-$spacing: 20px;
-$text-color: #494949;
-
-
-/* Grid */
-
-$column: 60px;
-$gutter: 20px;
-$max-width: 920px;
-
-/* Breakpoints */
-
-$mobile: new-breakpoint(min-width 320px 12);
-$tablet: new-breakpoint(min-width 720px 12);
-$desktop: new-breakpoint(min-width 960px 12);
-
-/* Body */
-
-body {
-    color: $text-color;
-    font-family: $sans-serif;
-    @include font-feature-settings("kern", "liga", "frac", "pnum");
-    -webkit-font-smoothing: antialiased;
+/**
+ * Array style indexing (0 = 1)
+ */
+@function calculate-position($positionOfButton) {
+  @return ($buttonSize+12) * $positionOfButton;
 }
 
+.ct-widget {
 
-/* Technical article */
+  &.ct-action-bar {
 
-.article {
+    /**
+     * Position it on the page
+     */
+    left: 16px;
+    position: fixed;
+    top: $buttonSize + 24;
+  }
 
-    @include outer-container;
-    padding: 0 10px 2em;
+  .ct-action {
 
-    &__content {
-        @include fill-parent();
+      &__button {
 
-        @include media($tablet) {
-            @include span-columns(8);
-        }
+          // Set the base appeance of the button
+          border-radius: $buttonSize / 2;
+          content: '';
+          cursor: pointer;
+          display: block;
+          height: $buttonSize;
+          line-height: $buttonSize;
+          opacity: 0.9;
+          position: absolute;
+          text-align: center;
+          @include type-icons($font-size: 24px);
+          width: $buttonSize;
 
-        // Common tag styles
+          // Each button displays an icon
+          &:before {
+              color: white;
+          }
 
-        h1 {
-            color: darken($text-color, 5%);
-            font-family: $serif;
-            font-size: 60px;
-            margin-bottom: 0;
-        }
+          /* Add page button */
+          &--addPage {
+              background: $muted-action-color;
+              top: calculate-position(0);
+              &:before { content: 'P'; }
+              &:hover { background: lighten($muted-action-color, 5%); }
+          }
 
-        h2 {
-            font-size: 20px;
-            margin-top: 1.5em;
-            line-height: 125%;
-        }
+          &--addBlock {
+              background: $muted-action-color;
+              top: calculate-position(1);
+              &:before { content: 'B'; }
+              &:hover { background: lighten($muted-action-color, 5%); }
+          }
 
-        li,
-        p {
-            font-size: 14px;
-            line-height: 145%;
-        }
+          &--metadata {
+              background: $muted-action-color;
+              top: calculate-position(2);
+              &:before { content: 'M'; }
+              &:hover { background: lighten($muted-action-color, 5%); }
+          }
 
-        blockquote {
-            color: lighten($text-color, 20%);
-            font-family: $serif;
-            font-size: 20px;
-            font-style: italic;
-            line-height: 135%;
-            margin: 1.5em 0;
-            padding-left: 40px;
-            position: relative;
+          /* Cancel button */
+          &--cancel {
+              background: $cancel-action-color;
+              left: $buttonSize + 16;
 
-            &:before {
-                content: '“';
-                font-size: 60px;
-                left: 0;
-                position: absolute;
-                top: 5px;
-            }
-        }
+              &:before {
+                  content: '\ea0f';
+              }
 
-        table {
-            @include font-feature-settings("kern", "liga", "tnum");
-            border-collapse: collapse;
-            font-size: 14px;
-            margin-top: $spacing;
-            table-layout: fixed;
-            width: 100%;
-        }
+              &:hover {
+                  background: lighten($cancel-action-color, 5%);
+              }
+          }
 
-        th {
-            border-bottom: 1px solid $text-color;
-            font-weight: bold;
-            padding: floor($spacing / 2) 0;
-            text-align: left;
-        }
+          /* Edit button */
+          &--edit {
+              $bkg-color: $edit-action-color;
+              background: $bkg-color;
 
-        td {
-            border-bottom: 1px solid lighten($text-color, 50%);
-            padding: floor($spacing / 2) 0;
-        }
+              /**
+               * Unlike the confirm and cancel buttons we rotate the edit
+               * button's pencil icon on mouse over to add a sense of
+               * purpose :)
+               */
+              &:before {
+                  content: '\e905';
+                  @include transition-property(transform);
+                  @include transition-duration(0.1s);
+                  @include transition-timing-function(ease-in);
+              }
 
-        tr,
-        td,
-        th {
-            vertical-align: middle;
-        }
-    }
+              &:hover {
+                  background: lighten($bkg-color, 5%);
 
-    &__by-line {
-        font-family: $serif;
-        font-style: italic;
-    }
+                  &:before {
+                      display: inline-block;
+                      @include transform(rotate(-15deg));
+                  }
+              }
+          }
 
-    &__caption {
-        color: lighten($text-color, 20%);
-        font-family: $serif;
-        font-size: 12px;
-        font-style: italic;
-        text-align: center;
-    }
+      } // __button
 
-    &__related {
-        @include fill-parent();
-        margin-top: 2em;
-
-        @include media($tablet) {
-            @include shift(1);
-            @include span-columns(3);
-        }
-    }
-
-}
-
-
-/* Code examples */
-
-.example {
-    background: #f6f6f6;
-    border-radius: 4px;
-    color: lighten($text-color, 15%);
-    padding: 0.5em;
-
-    &--bad {
-        &:before {
-            color: #c0392b;
-            content: 'BAD  ';
-            font-weight: bold;
-        }
-    }
-
-    &--good {
-        &:before {
-            color: #27ae60;
-            content: 'GOOD ';
-            font-weight: bold;
-        }
-    }
-}
-
-
-/* Author */
-
-.author {
-    background: #1abc9c;
-    @include clearfix;
-    color: white;
-    padding: 1em;
-
-    .author__about {
-        font-size: 16px;
-        margin-top: 0;
-        margin-bottom: 0.5em;
-    }
-
-    .author__bio {
-        font-size: 13px;
-        font-style: italic;
-        line-height: 135%;
-        margin: 0.5em 0 0;
-    }
-
-    // Modify editing styles to cater for the background color
-    .ce-element--focused,
-    .ce-element--over {
-        background-color: rgba(white, 0.2);
-        outline-color: rgba(white, 0.2) !important;
-        z-index: initial;
-    }
-}
-
-
-/* Learn more */
-
-.learn-more {
-    margin-top: 1em;
-
-    h3 {
-        font-size: 16px;
-        margin: 0.5em 0;
-    }
-
-    p {
-        font-size: 13px;
-        line-height: 135%;
-        margin: 0.5em 0;
-    }
-}
-
-
-
-/* Alignment */
-
-img,
-iframe,
-video,
-.ce-element--type-image,
-.ce-element--type-video {
-    clear: both;
-    display: block;
-    margin-left: auto;
-    margin-right: auto;
-    max-width: 100%;
-
-    &.align-left {
-        clear: initial;
-        float: left;
-        margin-right: 0.5em;
-    }
-
-    &.align-right {
-        clear: initial;
-        float: right;
-        margin-left: 0.5em;
-    }
-}
-
-.text-center {
-    text-align: center;
-}
-
-.text-left {
-    text-align: left;
-}
-
-.text-right {
-    text-align: right;
+  } // .ct-ignition
 }

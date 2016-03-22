@@ -49,6 +49,8 @@ module.exports = (grunt) ->
                 files:
                     'integration/integration.js': [
                         'src/integration/image-uploader.coffee'
+                        'src/integration/actions.coffee'
+                        'src/integration/editor.coffee'
                         'src/integration/integration.coffee'
                     ]
 
@@ -170,6 +172,7 @@ module.exports = (grunt) ->
                     cwd: 'integration'
                     src: [
                         'integration.js'
+                        'integration.css'
                     ]
                     dest: '../Resources/public/contenttools'
     })
