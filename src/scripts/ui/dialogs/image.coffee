@@ -184,7 +184,7 @@ class ContentTools.ImageDialog extends ContentTools.DialogUI
         # Add interaction handlers
         @_addDOMEventListeners()
 
-        @trigger('imageUploader.mount')
+        @dispatchEvent(@createEvent('imageuploader.mount'))
 
     populate: (imageURL, imageSize) ->
         # Populate the dialog with an image
@@ -230,7 +230,15 @@ class ContentTools.ImageDialog extends ContentTools.DialogUI
 
     save: (imageURL, imageSize, imageAttrs) ->
         # Save and insert the current image
-        @trigger('save', imageURL, imageSize, imageAttrs)
+        @dispatchEvent(
+            @createEvent(
+                'save',
+                {
+                    'imageURL': imageURL,
+                    'imageSize': imageSize,
+                    'imageAttrs': imageAttrs
+                })
+            )
 
     state: (state) ->
         # Set/get the state of the dialog (empty, uploading, populated)
@@ -270,7 +278,7 @@ class ContentTools.ImageDialog extends ContentTools.DialogUI
         @_domRotateCW = null
         @_domUpload = null
 
-        @trigger('imageUploader.unmount')
+        @dispatchEvent(@createEvent('imageuploader.unmount'))
 
     # Private methods
 
@@ -292,25 +300,27 @@ class ContentTools.ImageDialog extends ContentTools.DialogUI
                 ev.target.type = 'text'
                 ev.target.type = 'file'
 
-            @trigger('imageUploader.fileReady', file)
+            @dispatchEvent(
+                @createEvent('imageuploader.fileready', {file: file})
+                )
 
         # Cancel upload
         @_domCancelUpload.addEventListener 'click', (ev) =>
-            @trigger('imageUploader.cancelUpload')
+            @dispatchEvent(@createEvent('imageuploader.cancelupload'))
 
         # Clear image
         @_domClear.addEventListener 'click', (ev) =>
             @removeCropMarks()
-            @trigger('imageUploader.clear')
+            @dispatchEvent(@createEvent('imageuploader.clear'))
 
         # Rotate the image
         @_domRotateCCW.addEventListener 'click', (ev) =>
             @removeCropMarks()
-            @trigger('imageUploader.rotateCCW')
+            @dispatchEvent(@createEvent('imageuploader.rotateccw'))
 
         @_domRotateCW.addEventListener 'click', (ev) =>
             @removeCropMarks()
-            @trigger('imageUploader.rotateCW')
+            @dispatchEvent(@createEvent('imageuploader.rotatecw'))
 
         @_domCrop.addEventListener 'click', (ev) =>
             if @_cropMarks
@@ -320,7 +330,7 @@ class ContentTools.ImageDialog extends ContentTools.DialogUI
                 @addCropMarks()
 
         @_domInsert.addEventListener 'click', (ev) =>
-            @trigger('imageUploader.save')
+            @dispatchEvent(@createEvent('imageuploader.save'))
 
 
 class CropMarksUI extends ContentTools.AnchoredComponentUI

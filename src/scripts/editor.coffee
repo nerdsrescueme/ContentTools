@@ -10,7 +10,7 @@ class _EditorApp extends ContentTools.ComponentUI
         @history = null
 
         # The state of the app
-        @_state = ContentTools.EditorApp.DORMANT
+        @_state = 'dormant'
 
         # A map of editable regions (`ContentEdit.Region`) the editor will
         # manage.
@@ -37,6 +37,31 @@ class _EditorApp extends ContentTools.ComponentUI
         # Return a list of DOM nodes that are assigned as be editable regions
         return @_domRegions
 
+    getState: () ->
+        # Returns the current state of the editor (see `ContentTools.EditorApp`
+        # for information on possible editor states).
+        return @_state
+
+    ignition: () ->
+        # Return the ignition component for the editor
+        return @_ignition
+
+    inspector: () ->
+        # Return the inspector component for the editor
+        return @_inspector
+
+    isDormant: () ->
+        # Return true if the editor is currently in the dormant state
+        return @_state is 'dormant'
+
+    isReady: () ->
+        # Return true if the editor is currently in the ready state
+        return @_state is 'ready'
+
+    isEditing: () ->
+        # Return true if the editor is currently in the editing state
+        return @_state is 'editing'
+
     orderedRegions: () ->
         # Return a list of regions in the given order
         return (@_regions[name] for name in @_orderedRegions)
@@ -48,22 +73,9 @@ class _EditorApp extends ContentTools.ComponentUI
     shiftDown: () ->
         return @_shiftDown
 
-    getState: () ->
-        # Returns the current state of the editor (see `ContentTools.EditorApp`
-        # for information on possible editor states).
-        return @_state
-
-    isDormant: () ->
-        # Return true if the editor is currently in the dormant state
-        return @_state is ContentTools.EditorApp.DORMANT
-
-    isReady: () ->
-        # Return true if the editor is currently in the ready state
-        return @_state is ContentTools.EditorApp.READY
-
-    isEditing: () ->
-        # Return true if the editor is currently in the editing state
-        return @_state is ContentTools.EditorApp.EDITING
+    toolbox: () ->
+        # Return the toolbox component for the editor
+        return @_toolbox
 
     # Methods
 
@@ -90,7 +102,7 @@ class _EditorApp extends ContentTools.ComponentUI
             @_domRegions = document.querySelectorAll(queryOrDOMElements)
 
         # If there aren't any editiable regions return early leaving the app
-        # DORMANT.
+        # dormant.
         if @_domRegions.length == 0
             return
 
@@ -101,37 +113,38 @@ class _EditorApp extends ContentTools.ComponentUI
         @_ignition = new ContentTools.IgnitionUI()
         @attach(@_ignition)
 
-        @_ignition.bind 'start', () =>
-            @start()
-
-        @_ignition.bind 'stop', (save) =>
-            # HACK: We can't currently capture certain changes to text
-            # elements (for example deletion of a section of text from the
-            # context menu option). Long-term mutation observers or
-            # consistent support for the `input` event against
-            # `contenteditable` elements would resolve this.
-            #
-            # For now though we manually perform a content sync if an
-            # element supporting that method has focus.
-            focused = ContentEdit.Root.get().focused()
-            if focused and focused.isMounted() and
-                    focused._syncContent != undefined
-
-                focused._syncContent()
-
-            if save
-                @save()
-            else
-                # If revert returns false then we cancel the stop action
-                if not @revert()
-                    # Reset the ignition state
-                    @_ignition.changeState('editing')
-                    return
-
-            @stop()
-
         if @_domRegions.length
             @_ignition.show()
+
+            # Set up events to allow the ignition switch to manage the editor
+            # state.
+            @_ignition.addEventListener 'edit', (ev) =>
+                ev.preventDefault()
+
+                # Start the editor and set the ignition switch to `editing`
+                @start()
+                @_ignition.state('editing')
+
+            @_ignition.addEventListener 'confirm', (ev) =>
+                ev.preventDefault()
+
+                # Stop the editor and request that changes are saved
+                @_ignition.state('ready')
+                @stop(true)
+
+            @_ignition.addEventListener 'cancel', (ev) =>
+                ev.preventDefault()
+
+                # Stop the editor and request that changes are reverted
+                @stop(false)
+
+                # Update the state of the ignition switch based on the outcome
+                # of the stop action (e.g whether the revert was actioned or
+                # cancelled).
+                if this.isEditing()
+                    @_ignition.state('editing')
+                else
+                    @_ignition.state('ready')
 
         # Toolbox
         @_toolbox = new ContentTools.ToolboxUI(ContentTools.DEFAULT_TOOLS)
@@ -142,7 +155,7 @@ class _EditorApp extends ContentTools.ComponentUI
         @attach(@_inspector)
 
         # Set as ready to edit
-        @_state = ContentTools.EditorApp.READY
+        @_state = 'ready'
 
         # Check when elements are detached that the parent region is not empty
         ContentEdit.Root.get().bind 'detach', (element) =>
@@ -210,7 +223,6 @@ class _EditorApp extends ContentTools.ComponentUI
                 return
 
             ContentEdit.Root.get().trigger('previous-region', region)
-
 
     destroy: () ->
         # Destroy the editor application
@@ -360,10 +372,14 @@ class _EditorApp extends ContentTools.ComponentUI
     revert: () ->
         # Revert the page to it's previous state before we started editing
         # the page.
+        if not @dispatchEvent(@createEvent('revert'))
+            return
 
         # Check if there are any changes, and if there are make the user confirm
         # they want to lose them.
-        confirmMessage = ContentEdit._('Your changes have not been saved, do you really want to lose them?')
+        confirmMessage = ContentEdit._(
+            'Your changes have not been saved, do you really want to lose them?'
+            )
         if ContentEdit.Root.get().lastModified() > @_rootLastModified and
                 not window.confirm(confirmMessage)
             return false
@@ -407,12 +423,18 @@ class _EditorApp extends ContentTools.ComponentUI
             # Update the inspector tags
             @_inspector.updateTags()
 
-    save: (passive, args...) ->
+    save: (passive) ->
         # Save changes to the current page
+        if not @dispatchEvent(@createEvent('save', {passive: passive}))
+            return
 
         # Check the document has changed, if not we don't need do anything
         root = ContentEdit.Root.get()
-        if root.lastModified() == @_rootLastModified and passive
+        if root.lastModified() == @_rootLastModified
+            # Trigger the saved event early with no modified regions,
+            @dispatchEvent(
+                @createEvent('saved', {regions: {}, passive: passive})
+                )
             return
 
         # Build a map of the modified regions
@@ -440,9 +462,11 @@ class _EditorApp extends ContentTools.ComponentUI
             # Set the region back to not modified
             @_regionsLastModified[name] = region.lastModified()
 
-        # Trigger the save event with a region HTML map for the changed
+        # Trigger the saved event with a region HTML map for the changed
         # content.
-        @trigger('save', modifiedRegions, args...)
+        @dispatchEvent(
+            @createEvent('saved', {regions: modifiedRegions, passive: passive})
+            )
 
     setRegionOrder: (regionNames) ->
         # Set the navigation order of regions on the page to the order set in
@@ -451,6 +475,8 @@ class _EditorApp extends ContentTools.ComponentUI
 
     start: () ->
         # Start editing the page
+        if not @dispatchEvent(@createEvent('start'))
+            return
 
         # Set the edtior to busy while we set up
         @busy(true)
@@ -481,7 +507,7 @@ class _EditorApp extends ContentTools.ComponentUI
         @history.watch()
 
         # Set the application state to editing
-        @_state = ContentTools.EditorApp.EDITING
+        @_state = 'editing'
 
         # Display the editing tools
         @_toolbox.show()
@@ -489,8 +515,31 @@ class _EditorApp extends ContentTools.ComponentUI
 
         @busy(false)
 
-    stop: () ->
-        # Stop editing the page.
+    stop: (save) ->
+        # Stop editing the page
+        if not @dispatchEvent(@createEvent('stop', {save: save}))
+            return
+
+        # HACK: We can't currently capture certain changes to text
+        # elements (for example deletion of a section of text from the
+        # context menu option). Long-term mutation observers or
+        # consistent support for the `input` event against
+        # `contenteditable` elements would resolve this.
+        #
+        # For now though we manually perform a content sync if an
+        # element supporting that method has focus.
+        focused = ContentEdit.Root.get().focused()
+        if focused and focused.isMounted() and
+                focused._syncContent != undefined
+
+            focused._syncContent()
+
+        if save
+            @save()
+        else
+            # If revert returns false then we cancel the stop action
+            if not @revert()
+                return
 
         # Blur any existing focused element
         if ContentEdit.Root.get().focused()
@@ -508,7 +557,9 @@ class _EditorApp extends ContentTools.ComponentUI
         @_regions = {}
 
         # Set the application state to ready to edit
-        @_state = ContentTools.EditorApp.READY
+        @_state = 'ready'
+
+        return
 
     # Private methods
 
@@ -556,8 +607,8 @@ class _EditorApp extends ContentTools.ComponentUI
         # When unloading the page we check to see if the user is currently
         # editing and if so ask them to confirm the action.
         window.onbeforeunload = (ev) =>
-            if @_state is ContentTools.EditorApp.EDITING
-                return ContentEdit._('Your changes have not been saved, do you really want to lose them?')
+            if @_state is 'editing'
+                return ContentEdit._(ContentTools.CANCEL_MESSAGE)
 
         # When the page is unloaded we destroy the app to make sure everything
         # is cleaned up.
@@ -608,19 +659,6 @@ class ContentTools.EditorApp
     # Constants
 
     # A set of possible states for the editor.
-
-    # An instance of the `_EditorApp` class exists but the `init` method has not
-    # yet been called (the primary distinction here is that the editor has not
-    # been mounted to the DOM).
-    @DORMANT = 'dormant'
-
-    # The editor has been mounted to the DOM and is ready (e.g the `start`
-    # method can be called to begin editing the document).
-    @READY = 'ready'
-
-    # The editor is in the editing state allowing changes to be made to the
-    # document.
-    @EDITING = 'editing'
 
     # Storage for the singleton instance that will be created for the editor app
     instance = null

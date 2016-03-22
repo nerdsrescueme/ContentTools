@@ -24,22 +24,22 @@ class CloudinaryImageUploader
         @_dialog = dialog
 
         # Add event handlers for the dialog
-        @_dialog.bind 'imageUploader.cancelUpload', () =>
+        @_dialog.addEventListener 'imageuploader.cancelupload', () =>
             @_onCancelUpload()
 
-        @_dialog.bind 'imageUploader.clear', () =>
+        @_dialog.addEventListener 'imageuploader.clear', () =>
             @_onClear()
 
-        @_dialog.bind 'imageUploader.fileReady', (files) =>
+        @_dialog.addEventListener 'imageuploader.fileready', (files) =>
             @_onFileReady(files)
 
-        @_dialog.bind 'imageUploader.rotateCCW', () =>
+        @_dialog.addEventListener 'imageuploader.rotateccw', () =>
             @_onRotate(-90)
 
-        @_dialog.bind 'imageUploader.rotateCW', () =>
+        @_dialog.addEventListener 'imageuploader.rotatecw', () =>
             @_onRotate(90)
 
-        @_dialog.bind 'imageUploader.save', () =>
+        @_dialog.addEventListener 'imageuploader.save', () =>
             @_onSave()
 
     # Event handlers
@@ -61,8 +61,9 @@ class CloudinaryImageUploader
         @_dialog.clear()
         @_image = null
 
-    _onFileReady: (file) ->
+    _onFileReady: (ev) ->
         # Handle a file being selected by the user
+        file = ev.file
 
         # Set the dialog state to uploading
         @_dialog.progress(0)

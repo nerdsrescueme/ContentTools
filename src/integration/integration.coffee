@@ -38,46 +38,48 @@ window.onload = () ->
 
     editor.init(properties, 'property')
 
-    editor.bind 'save', (regions, autoSave) ->
-        # If no regions present, do nothing
-        if (0 == Object.keys(regions).length)
-            new ContentTools.FlashUI('ok')
-            return
+    editor.addEventListener 'saved', (ev) ->
 
-        # Mark the ignition as busy while we save the page
-        editor.busy(true)
+      regions = ev.detail().regions
 
-        # Create output by iterating regions
-        outputData = {}
-        outputData['@subject'] = "<#{subject}>"
-        outputData['@type'] = "<#{type}>"
+      if (0 == Object.keys(regions).length)
+          new ContentTools.FlashUI('ok')
+          return
 
-        for region, content of regions
-            def = region.replace('schema:', schema)
-            outputData["<#{def}>"] = content
+      # Mark the ignition as busy while we save the page
+      editor.busy(true)
 
-        # Create xhr request function
-        save = (to) ->
-            xhr = new XMLHttpRequest()
+      # Create output by iterating regions
+      outputData = {}
+      outputData['@subject'] = "<#{subject}>"
+      outputData['@type'] = "<#{type}>"
 
-            xhr.addEventListener 'readystatechange', () ->
-                if xhr.readyState is 4 # ReadyState Complete
-                    successResultCodes = [200]
-                    if xhr.status in successResultCodes
-                        data = JSON.parse xhr.responseText
-                        console.log 'data message: ', data.message
-                        editor.busy(false)
-                        new ContentTools.FlashUI('ok')
-                    else
-                        console.log 'Error loading data...'
-                        editor.busy(false)
-                        new ContentTools.FlashUI('no')
+      for region, content of regions
+          def = region.replace('schema:', schema)
+          outputData["<#{def}>"] = content
 
-            xhr.open 'PUT', to, false
-            xhr.setRequestHeader 'Content-Type', 'application/json;charset=UTF-8'
-            xhr.setRequestHeader 'Accept', 'application/json'
-            xhr.setRequestHeader 'X-Requested-With', 'XMLHttpRequest'
-            xhr.send(JSON.stringify(outputData))
+      # Create xhr request function
+      saved = (to) ->
+          xhr = new XMLHttpRequest()
 
-        # Do it!
-        save putEndpoint
+          xhr.addEventListener 'readystatechange', () ->
+              if xhr.readyState is 4 # ReadyState Complete
+                  successResultCodes = [200]
+                  if xhr.status in successResultCodes
+                      data = JSON.parse xhr.responseText
+                      console.log 'data message: ', data.message
+                      editor.busy(false)
+                      new ContentTools.FlashUI('ok')
+                  else
+                      console.log 'Error loading data...'
+                      editor.busy(false)
+                      new ContentTools.FlashUI('no')
+
+          xhr.open 'PUT', to, false
+          xhr.setRequestHeader 'Content-Type', 'application/json;charset=UTF-8'
+          xhr.setRequestHeader 'Accept', 'application/json'
+          xhr.setRequestHeader 'X-Requested-With', 'XMLHttpRequest'
+          xhr.send(JSON.stringify(outputData))
+
+      # Do it!
+      saved putEndpoint

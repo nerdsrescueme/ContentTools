@@ -104,7 +104,7 @@ class ContentTools.ToolboxUI extends ContentTools.WidgetUI
                 @_toolUIs[toolName].disabled(true)
 
                 # Whenever the tool is applied we'll want to force an update
-                @_toolUIs[toolName].bind 'apply', () =>
+                @_toolUIs[toolName].addEventListener 'applied', () =>
                     @updateTools()
 
         # Restore the position of the element (if there's a restore set)
@@ -403,11 +403,17 @@ class ContentTools.ToolUI extends ContentTools.AnchoredComponentUI
         unless @tool.canApply(element, selection)
             return
 
+        detail = {
+            'element': element,
+            'selection': selection
+            }
+
         callback = (applied) =>
             if applied
-                @trigger('apply')
+                @dispatchEvent(@createEvent('applied', detail))
 
-        @tool.apply(element, selection, callback)
+        if @dispatchEvent(@createEvent('apply', detail))
+            @tool.apply(element, selection, callback)
 
     disabled: (disabledState) ->
         # Get/Set the disabled state of the tool

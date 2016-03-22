@@ -11,31 +11,31 @@ class ImageUploader
         @_dialog = dialog
 
         # Listen to key events from the dialog and assign handlers to each
-        @_dialog.bind 'cancel', () =>
+        @_dialog.addEventListener 'cancel', () =>
             @_onCancel()
 
-        @_dialog.bind 'imageUploader.cancelUpload', () =>
+        @_dialog.addEventListener 'imageuploader.cancelupload', () =>
             @_onCancelUpload()
 
-        @_dialog.bind 'imageUploader.clear', () =>
+        @_dialog.addEventListener 'imageuploader.clear', () =>
             @_onClear()
 
-        @_dialog.bind 'imageUploader.fileReady', (files) =>
-            @_onFileReady(files)
+        @_dialog.addEventListener 'imageuploader.fileready', (ev) =>
+            @_onFileReady(ev.detail().file)
 
-        @_dialog.bind 'imageUploader.mount', () =>
+        @_dialog.addEventListener 'imageuploader.mount', () =>
             @_onMount()
 
-        @_dialog.bind 'imageUploader.rotateCCW', () =>
+        @_dialog.addEventListener 'imageuploader.rotateccw', () =>
             @_onRotateCCW()
 
-        @_dialog.bind 'imageUploader.rotateCW', () =>
+        @_dialog.addEventListener 'imageuploader.rotatecw', () =>
             @_onRotateCW()
 
-        @_dialog.bind 'imageUploader.save', () =>
+        @_dialog.addEventListener 'imageuploader.save', () =>
             @_onSave()
 
-        @_dialog.bind 'imageUploader.unmount', () =>
+        @_dialog.addEventListener 'imageuploader.unmount', () =>
             @_onUnmount()
 
     # Event handlers
@@ -58,6 +58,7 @@ class ImageUploader
 
     _onFileReady: (file) ->
         # Handle a file being selected by the user
+        console.log file
 
         # Set the dialog state to uploading
         @_dialog.progress(0)

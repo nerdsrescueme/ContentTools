@@ -9,47 +9,47 @@
 
     function ImageUploader(dialog) {
       this._dialog = dialog;
-      this._dialog.bind('cancel', (function(_this) {
+      this._dialog.addEventListener('cancel', (function(_this) {
         return function() {
           return _this._onCancel();
         };
       })(this));
-      this._dialog.bind('imageUploader.cancelUpload', (function(_this) {
+      this._dialog.addEventListener('imageuploader.cancelupload', (function(_this) {
         return function() {
           return _this._onCancelUpload();
         };
       })(this));
-      this._dialog.bind('imageUploader.clear', (function(_this) {
+      this._dialog.addEventListener('imageuploader.clear', (function(_this) {
         return function() {
           return _this._onClear();
         };
       })(this));
-      this._dialog.bind('imageUploader.fileReady', (function(_this) {
-        return function(files) {
-          return _this._onFileReady(files);
+      this._dialog.addEventListener('imageuploader.fileready', (function(_this) {
+        return function(ev) {
+          return _this._onFileReady(ev.detail().file);
         };
       })(this));
-      this._dialog.bind('imageUploader.mount', (function(_this) {
+      this._dialog.addEventListener('imageuploader.mount', (function(_this) {
         return function() {
           return _this._onMount();
         };
       })(this));
-      this._dialog.bind('imageUploader.rotateCCW', (function(_this) {
+      this._dialog.addEventListener('imageuploader.rotateccw', (function(_this) {
         return function() {
           return _this._onRotateCCW();
         };
       })(this));
-      this._dialog.bind('imageUploader.rotateCW', (function(_this) {
+      this._dialog.addEventListener('imageuploader.rotatecw', (function(_this) {
         return function() {
           return _this._onRotateCW();
         };
       })(this));
-      this._dialog.bind('imageUploader.save', (function(_this) {
+      this._dialog.addEventListener('imageuploader.save', (function(_this) {
         return function() {
           return _this._onSave();
         };
       })(this));
-      this._dialog.bind('imageUploader.unmount', (function(_this) {
+      this._dialog.addEventListener('imageuploader.unmount', (function(_this) {
         return function() {
           return _this._onUnmount();
         };
@@ -69,6 +69,7 @@
 
     ImageUploader.prototype._onFileReady = function(file) {
       var upload;
+      console.log(file);
       this._dialog.progress(0);
       this._dialog.state('uploading');
       upload = (function(_this) {
@@ -161,8 +162,9 @@
     putEndpoint = "" + window.CONTENT_ENDPOINT + "/" + subject;
     properties = document.querySelectorAll('*[property^="schema:"]');
     editor.init(properties, 'property');
-    return editor.bind('save', function(regions, autoSave) {
-      var content, def, outputData, region, save;
+    return editor.addEventListener('saved', function(ev) {
+      var content, def, outputData, region, regions, saved;
+      regions = ev.detail().regions;
       if (0 === Object.keys(regions).length) {
         new ContentTools.FlashUI('ok');
         return;
@@ -176,7 +178,7 @@
         def = region.replace('schema:', schema);
         outputData["<" + def + ">"] = content;
       }
-      save = function(to) {
+      saved = function(to) {
         var xhr;
         xhr = new XMLHttpRequest();
         xhr.addEventListener('readystatechange', function() {
@@ -201,7 +203,7 @@
         xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
         return xhr.send(JSON.stringify(outputData));
       };
-      return save(putEndpoint);
+      return saved(putEndpoint);
     });
   };
 

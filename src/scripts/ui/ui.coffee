@@ -5,6 +5,11 @@ class ContentTools.ComponentUI
 
     constructor: () ->
 
+        # Events are supported using the native DOM event system. We create a
+        # DOM element that's never attached to the DOM but allows us to plugin
+        # to the native event system.
+        @_eventBinderDOM = document.createElement('div')
+
         # Event bindings for the component
         @_bindings = {}
 
@@ -84,38 +89,50 @@ class ContentTools.ComponentUI
             return
 
         @_removeDOMEventListeners()
-        @_domElement.parentNode.removeChild(@_domElement)
+        if @_domElement.parentNode
+            @_domElement.parentNode.removeChild(@_domElement)
+
         @_domElement = null
 
     # Event methods
 
-    bind: (eventName, callback) ->
-        # Bind a callback to an event
+    addEventListener: (eventName, callback) ->
+        # Add an event listener for the UI component
 
         # Check a list has been set for the specified event
-        if @_bindings[eventName] is undefined
+        if @_bindings[eventName] == undefined
             @_bindings[eventName] = []
 
         # Add the callback to list for the event
         @_bindings[eventName].push(callback)
 
-        return callback
+        return
 
-    trigger: (eventName, args...) ->
-        # Trigger an event against the node
+    createEvent: (eventName, detail) ->
+        # Create an event
+        return new ContentTools.Event(eventName, detail)
+
+    dispatchEvent: (ev) ->
+        # Dispatch an event against the UI compontent
 
         # Check we have callbacks to trigger for the event
-        unless @_bindings[eventName]
-            return
+        unless @_bindings[ev.name()]
+            return not ev.defaultPrevented()
 
         # Call each function bound to the event
-        for callback in @_bindings[eventName]
+        for callback in @_bindings[ev.name()]
+            if ev.propagationStopped()
+                break
+
             if not callback
                 continue
-            callback.call(this, args...)
 
-    unbind: (eventName, callback) ->
-        # Unbind a callback from an event
+            callback.call(this, ev)
+
+        return not ev.defaultPrevented()
+
+    removeEventListener: (eventName, callback) ->
+        # Remove a previously registered event listener for the UI component
 
         # If no eventName is specified remove all events
         unless eventName
